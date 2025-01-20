@@ -2,7 +2,9 @@
   <div class="app">
     <nav>
       <router-link to="/">Home</router-link> |
-      <router-link to="/tasks">Tasks</router-link>
+      <router-link to="/tasks">Tasks</router-link> |
+      <router-link to="/projects">Projects</router-link> |
+      <router-link to="/notes">Notes</router-link>
     </nav>
     <router-view></router-view>
   </div>
