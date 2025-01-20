@@ -1,69 +1,80 @@
 <!-- Tasks.vue -->
 <template>
   <div class="tasks-page">
-    <h1>All Tasks</h1>
+    <h1>Tasks</h1>
     <div class="subtitle">
       Keep track of everything you need to do
     </div>
 
-    <div class="task-input-container">
-      <div class="task-input">
-        <input 
-          v-model="newTask.text" 
-          @keyup.enter="addTask" 
-          placeholder="Add a new task to your list..."
-          class="task-input-field"
-        >
-        <input 
-          type="date"
-          v-model="newTask.scheduledDate"
-          class="date-input"
-          :min="today"
-        >
-        <button @click="addTask" class="add-button">Add Task</button>
-      </div>
+    <div class="task-input">
+      <input 
+        v-model="newTask.text" 
+        @keyup.enter="addTask" 
+        placeholder="Add a new task..."
+        class="task-input-field"
+      >
+      <input 
+        type="date"
+        v-model="newTask.scheduledDate"
+        class="date-input"
+        :min="today"
+      >
+      <button @click="addTask" class="add-button">Add Task</button>
     </div>
 
     <div class="tasks-container">
       <div v-if="tasks.length === 0" class="empty-state">
-        <p>Your task list is empty. Add some tasks to get started!</p>
+        <p>No tasks yet. Create your first task to get started!</p>
       </div>
       
-      <div v-else>
-        <div v-for="(group, date) in groupedTasks" :key="date" class="task-group">
-          <h3 class="group-header">
-            {{ formatGroupDate(date) }}
-          </h3>
+      <div v-else class="task-list">
+        <div 
+          v-for="(group, date) in groupedTasks" 
+          :key="date" 
+          class="task-card"
+        >
+          <div class="task-header">
+            <div class="task-header-content">
+              <h3>{{ formatGroupDate(date) }}</h3>
+              <span class="task-summary">
+                {{ completedTasksInGroup(group) }}/{{ group.length }} tasks completed
+              </span>
+            </div>
+          </div>
 
-          <ul class="task-list">
-            <li v-for="task in group" :key="task.id" class="task-item">
-              <div class="task-content">
-                <input 
-                  type="checkbox" 
-                  v-model="task.completed"
-                  class="task-checkbox"
-                >
-                <div class="task-details">
+          <div class="task-content">
+            <ul class="task-items">
+              <li 
+                v-for="task in sortedTasks(group)" 
+                :key="task.id" 
+                class="task-item"
+              >
+                <div class="task-item-content">
+                  <input 
+                    type="checkbox" 
+                    v-model="task.completed"
+                    class="task-checkbox"
+                  >
                   <span :class="{ 'task-text': true, 'completed': task.completed }">
                     {{ task.text }}
                   </span>
                 </div>
-              </div>
-              <div class="task-actions">
-                <input 
-                  type="date"
-                  v-model="task.scheduledDate"
-                  class="date-input"
-                  :min="today"
-                  @change="updateTask(task)"
-                >
-                <button 
-                  @click="deleteTask(task.id)" 
-                  class="delete-button"
-                >×</button>
-              </div>
-            </li>
-          </ul>
+                <div class="task-actions">
+                  <input 
+                    type="date"
+                    v-model="task.scheduledDate"
+                    class="date-input"
+                    :min="today"
+                    @change="updateTask(task)"
+                  >
+                  <button 
+                    @click="deleteTask(task.id)" 
+                    class="delete-button"
+                  >×</button>
+                </div>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
@@ -89,18 +100,13 @@ export default {
     groupedTasks() {
       const groups = {}
       
-      // Sort tasks by date and completion status
       const sortedTasks = [...this.tasks].sort((a, b) => {
         if (a.scheduledDate !== b.scheduledDate) {
           return a.scheduledDate.localeCompare(b.scheduledDate)
         }
-        if (a.completed !== b.completed) {
-          return a.completed ? 1 : -1
-        }
         return 0
       })
 
-      // Group tasks by date
       sortedTasks.forEach(task => {
         if (!groups[task.scheduledDate]) {
           groups[task.scheduledDate] = []
@@ -122,18 +128,24 @@ export default {
           scheduledDate: this.newTask.scheduledDate
         })
         this.newTask.text = ''
-        // Keep the date as is for consecutive tasks
       }
     },
     deleteTask(taskId) {
       this.tasks = this.tasks.filter(task => task.id !== taskId)
     },
     updateTask(task) {
-      // This method can be expanded for additional update functionality
       const index = this.tasks.findIndex(t => t.id === task.id)
       if (index !== -1) {
         this.tasks[index] = { ...task }
       }
+    },
+    sortedTasks(tasks) {
+      return [...tasks].sort((a, b) => {
+        if (a.completed !== b.completed) {
+          return a.completed ? 1 : -1
+        }
+        return 0
+      })
     },
     formatGroupDate(date) {
       const today = new Date().toISOString().split('T')[0]
@@ -147,6 +159,9 @@ export default {
         month: 'long',
         day: 'numeric'
       })
+    },
+    completedTasksInGroup(tasks) {
+      return tasks.filter(task => task.completed).length
     }
   }
 }
@@ -154,9 +169,8 @@ export default {
 
 <style scoped>
 .tasks-page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+  width: 100%;
+  height: calc(100vh - 140px);
   text-align: left;
 }
 
@@ -166,13 +180,11 @@ export default {
   font-size: 1.1em;
 }
 
-.task-input-container {
-  margin-bottom: 30px;
-}
-
 .task-input {
   display: flex;
   gap: 10px;
+  margin-bottom: 30px;
+  width: 100%;
 }
 
 .task-input-field {
@@ -189,6 +201,8 @@ export default {
   border-radius: 6px;
   font-size: 1em;
   color: #666;
+  width: 150px;
+  flex-shrink: 0;
 }
 
 .task-input-field:focus,
@@ -205,6 +219,7 @@ export default {
   border-radius: 6px;
   cursor: pointer;
   font-size: 1em;
+  white-space: nowrap;
 }
 
 .add-button:hover {
@@ -215,6 +230,9 @@ export default {
   background: #f9f9f9;
   padding: 20px;
   border-radius: 8px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .empty-state {
@@ -223,20 +241,63 @@ export default {
   padding: 40px 0;
 }
 
-.task-group {
-  margin-bottom: 24px;
-}
-
-.group-header {
-  color: #2c3e50;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #eee;
-}
-
 .task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.task-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.task-header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-header h3 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.task-summary {
+  font-size: 0.9em;
+  color: #666;
+  margin-top: 4px;
+  display: block;
+}
+
+.task-content {
+  padding: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.task-items {
   list-style: none;
   padding: 0;
+  margin: 0;
+  width: 100%;
 }
 
 .task-item {
@@ -244,16 +305,25 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  background: white;
+  background: #f9f9f9;
   border-radius: 6px;
   margin-bottom: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
 }
 
-.task-content {
+.task-item:hover {
+  background: #f0f0f0;
+}
+
+.task-item:last-child {
+  margin-bottom: 0;
+}
+
+.task-item-content {
   display: flex;
   align-items: center;
   flex: 1;
+  min-width: 0;
 }
 
 .task-checkbox {
@@ -261,14 +331,15 @@ export default {
   width: 18px;
   height: 18px;
   cursor: pointer;
-}
-
-.task-details {
-  flex: 1;
+  flex-shrink: 0;
 }
 
 .task-text {
   font-size: 1.1em;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .task-text.completed {
@@ -289,10 +360,16 @@ export default {
   font-size: 20px;
   cursor: pointer;
   padding: 0 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.task-item:hover .delete-button {
   opacity: 0.6;
 }
 
 .delete-button:hover {
-  opacity: 1;
+  opacity: 1 !important;
 }
 </style>

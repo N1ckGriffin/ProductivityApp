@@ -1,8 +1,8 @@
 <!-- Today.vue -->
 <template>
-  <div class="daily-tasks">
+  <div class="today-page">
     <h1>Today's Tasks</h1>
-    <div class="date-header">
+    <div class="subtitle">
       {{ today }}
     </div>
 
@@ -21,34 +21,48 @@
         <p>No tasks for today yet. Start fresh by adding some tasks above!</p>
       </div>
       
-      <div v-else class="tasks-summary">
-        <p>{{ completedTasks }} of {{ todaysTasks.length }} tasks completed</p>
-        <div class="progress-bar">
-          <div 
-            class="progress" 
-            :style="{ width: progressPercentage + '%' }"
-          ></div>
-        </div>
-      </div>
-
-      <ul class="task-list">
-        <li v-for="task in todaysTasks" :key="task.id" class="task-item">
-          <div class="task-content">
-            <input 
-              type="checkbox" 
-              v-model="task.completed"
-              class="task-checkbox"
-            >
-            <span :class="{ 'task-text': true, 'completed': task.completed }">
-              {{ task.text }}
+      <div v-else class="task-card">
+        <div class="task-header">
+          <div class="task-header-content">
+            <h3>Today's Progress</h3>
+            <span class="task-summary">
+              {{ completedTasks }} of {{ todaysTasks.length }} tasks completed
             </span>
           </div>
-          <button 
-            @click="deleteTask(task.id)" 
-            class="delete-button"
-          >×</button>
-        </li>
-      </ul>
+        </div>
+
+        <div class="task-content">
+          <div class="progress-bar">
+            <div 
+              class="progress" 
+              :style="{ width: progressPercentage + '%' }"
+            ></div>
+          </div>
+
+          <ul class="task-list">
+            <li 
+              v-for="task in todaysTasks" 
+              :key="task.id" 
+              class="task-item"
+            >
+              <div class="task-item-content">
+                <input 
+                  type="checkbox" 
+                  v-model="task.completed"
+                  class="task-checkbox"
+                >
+                <span :class="{ 'task-text': true, 'completed': task.completed }">
+                  {{ task.text }}
+                </span>
+              </div>
+              <button 
+                @click="deleteTask(task.id)" 
+                class="delete-button"
+              >×</button>
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -97,14 +111,13 @@ export default {
 </script>
 
 <style scoped>
-.daily-tasks {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+.today-page {
+  width: 100%;
+  height: calc(100vh - 140px);
   text-align: left;
 }
 
-.date-header {
+.subtitle {
   color: #666;
   margin-bottom: 20px;
   font-size: 1.1em;
@@ -114,6 +127,7 @@ export default {
   display: flex;
   gap: 10px;
   margin-bottom: 30px;
+  width: 100%;
 }
 
 .task-input-field {
@@ -137,6 +151,7 @@ export default {
   border-radius: 6px;
   cursor: pointer;
   font-size: 1em;
+  white-space: nowrap;
 }
 
 .add-button:hover {
@@ -147,6 +162,9 @@ export default {
   background: #f9f9f9;
   padding: 20px;
   border-radius: 8px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .empty-state {
@@ -155,9 +173,48 @@ export default {
   padding: 40px 0;
 }
 
-.tasks-summary {
-  margin-bottom: 20px;
+.task-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.task-header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-header h3 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.task-summary {
+  font-size: 0.9em;
   color: #666;
+  margin-top: 4px;
+  display: block;
+}
+
+.task-content {
+  padding: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .progress-bar {
@@ -165,7 +222,7 @@ export default {
   background-color: #eee;
   border-radius: 4px;
   overflow: hidden;
-  margin-top: 10px;
+  margin-bottom: 20px;
 }
 
 .progress {
@@ -177,6 +234,8 @@ export default {
 .task-list {
   list-style: none;
   padding: 0;
+  margin: 0;
+  width: 100%;
 }
 
 .task-item {
@@ -184,16 +243,25 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  background: white;
+  background: #f9f9f9;
   border-radius: 6px;
   margin-bottom: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
 }
 
-.task-content {
+.task-item:hover {
+  background: #f0f0f0;
+}
+
+.task-item:last-child {
+  margin-bottom: 0;
+}
+
+.task-item-content {
   display: flex;
   align-items: center;
   flex: 1;
+  min-width: 0;
 }
 
 .task-checkbox {
@@ -201,10 +269,15 @@ export default {
   width: 18px;
   height: 18px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .task-text {
   font-size: 1.1em;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .task-text.completed {
@@ -219,10 +292,16 @@ export default {
   font-size: 20px;
   cursor: pointer;
   padding: 0 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.task-item:hover .delete-button {
   opacity: 0.6;
 }
 
 .delete-button:hover {
-  opacity: 1;
+  opacity: 1 !important;
 }
 </style>
