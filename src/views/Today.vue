@@ -1,4 +1,4 @@
-<!-- Home.vue -->
+<!-- Today.vue -->
 <template>
   <div class="daily-tasks">
     <h1>Today's Tasks</h1>
@@ -55,7 +55,7 @@
 
 <script>
 export default {
-  name: 'Home',
+  name: 'Today',
   data() {
     return {
       newTask: '',
