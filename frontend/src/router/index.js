@@ -1,30 +1,37 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Today from '../views/Today.vue'
-import Tasks from '../views/Tasks.vue'
-import Projects from '../views/Projects.vue'
-import Notes from '../views/Notes.vue'
-
+import Dashboard from '../views/Dashboard.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'Today',
-    component: Today
+    redirect: '/dashboard'
   },
   {
-    path: '/tasks',
-    name: 'Tasks',
-    component: Tasks
-  },
-  {
-    path: '/projects',
-    name: 'Projects',
-    component: Projects
-  },
-  {
-    path: '/notes',
-    name: 'Notes',
-    component: Notes
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: Dashboard,
+    children: [
+      {
+        path: '',
+        name: 'Today',
+        component: () => import('../components/Today.vue')
+      },
+      {
+        path: 'tasks',
+        name: 'Tasks',
+        component: () => import('../components/Tasks.vue')
+      },
+      {
+        path: 'projects',
+        name: 'Projects',
+        component: () => import('../components/Projects.vue')
+      },
+      {
+        path: 'notes',
+        name: 'Notes',
+        component: () => import('../components/Notes.vue')
+      }
+    ]
   }
 ]
 
