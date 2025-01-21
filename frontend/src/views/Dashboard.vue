@@ -72,7 +72,7 @@ nav a {
   padding: 4px 8px;
 }
 
-nav a.router-link-active {
+nav a.router-link-exact-active {
   color: #42b983;
 }
 </style>
