@@ -39,6 +39,7 @@ import Today from '../components/Today.vue'
 import Tasks from '../components/Tasks.vue'
 import Projects from '../components/Projects.vue'
 import Notes from '../components/Notes.vue'
+import taskStore from '../stores/TaskStore'
 
 export default {
   name: 'Dashboard',
@@ -81,6 +82,7 @@ export default {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       this.closeDropdown()
+      taskStore.clearTasks();
       this.$router.push('/dashboard')
     }
   },

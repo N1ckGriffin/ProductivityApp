@@ -3,15 +3,18 @@
 </template>
 
 <script>
+import taskStore from '../stores/TaskStore'
+
 export default {
   name: 'AuthSuccess',
   created() {
-    const token = this.$route.query.token;
-    if (token) {
-      localStorage.setItem('token', token);
-      this.fetchUserInfo(token);
-    }
-  },
+        const token = this.$route.query.token;
+        if (token) {
+            console.log('Token received:', token); // Add this
+            localStorage.setItem('token', token);
+            this.fetchUserInfo(token);
+        }
+    },
   methods: {
     async fetchUserInfo(token) {
       try {
@@ -23,6 +26,7 @@ export default {
         if (response.ok) {
           const userData = await response.json();
           localStorage.setItem('user', JSON.stringify(userData));
+          await taskStore.fetchTasks();
           this.$router.push('/dashboard');
         }
       } catch (error) {

@@ -63,6 +63,11 @@ export const useTaskStore = () => {
     }
   }
 
+    // Clear task store
+    const clearTasks = () => {
+        tasks.value = [];
+    };
+
   // Computed functions
   const getTodaysTasks = computed(() => {
     const today = new Date()
@@ -85,6 +90,7 @@ export const useTaskStore = () => {
     updateTask,
     addTask,
     deleteTask,
+    clearTasks,
     getTodaysTasks
   }
 }

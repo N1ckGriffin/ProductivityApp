@@ -14,15 +14,15 @@
       <div class="stats-section">
         <div class="stat-card">
           <h3>Active Tasks</h3>
-          <p class="stat-number">12</p>
+          <p class="stat-number">{{ stats.activeTasks }}</p>
         </div>
         <div class="stat-card">
           <h3>Projects</h3>
-          <p class="stat-number">3</p>
+          <p class="stat-number">{{ stats.projects }}</p>
         </div>
         <div class="stat-card">
           <h3>Notes</h3>
-          <p class="stat-number">8</p>
+          <p class="stat-number">{{ stats.notes }}</p>
         </div>
       </div>
 
@@ -35,6 +35,9 @@
 </template>
 
 <script>
+import { projectsApi, tasksApi, notesApi } from '../services/api'
+import taskStore from '../stores/TaskStore'
+
 export default {
   name: 'Profile',
   data() {
@@ -43,6 +46,11 @@ export default {
         name: '',
         email: '',
         picture: ''
+      },
+      stats: {
+        activeTasks: 0,
+        projects: 0,
+        notes: 0
       }
     }
   },
@@ -58,13 +66,36 @@ export default {
     logout() {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      taskStore.clearTasks();
       this.$router.push('/login')
+    },
+    async fetchStats() {
+      try {
+        // Fetch all data
+        const [tasks, projects, notes] = await Promise.all([
+          tasksApi.getTasks(),
+          projectsApi.getProjects(),
+          notesApi.getNotes()
+        ])
+
+        // Calculate active (non-completed) tasks
+        this.stats.activeTasks = tasks.filter(task => !task.completed).length
+
+        // Get projects count
+        this.stats.projects = projects.length
+
+        // Get standalone notes count (non-project notes)
+        this.stats.notes = notes.length
+      } catch (error) {
+        console.error('Error fetching stats:', error)
+      }
     }
   },
-  mounted() {
+  async mounted() {
     const userData = localStorage.getItem('user')
     if (userData) {
       this.user = JSON.parse(userData)
+      await this.fetchStats()
     } else {
       this.$router.push('/login')
     }
