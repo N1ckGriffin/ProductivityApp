@@ -6,7 +6,10 @@ const Task = require('../models/Task');
 // Get all tasks (supports query param for today's tasks)
 router.get('/', auth, async (req, res) => {
   try {
-    let query = { userId: req.user._id };
+    let query = { 
+        userId: req.user._id, 
+        isProjectTask: { $ne: true }
+    };
     
     // If 'today' is specified, filter for today's tasks
     if (req.query.today === 'true') {
