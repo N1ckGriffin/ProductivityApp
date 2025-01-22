@@ -1,5 +1,8 @@
+// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 import Dashboard from '../views/Dashboard.vue'
+import Login from '../views/Login.vue'
+import Profile from '../views/Profile.vue'
 
 const routes = [
   {
@@ -32,12 +35,42 @@ const routes = [
         component: () => import('../components/Notes.vue')
       }
     ]
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: Profile,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/auth-success',
+    name: 'AuthSuccess',
+    component: () => import('../views/AuthSuccess.vue')
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// Navigation guard for protected routes
+router.beforeEach((to, from, next) => {
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      next('/login')
+    } else {
+      next()
+    }
+  } else {
+    next()
+  }
 })
 
 export default router
