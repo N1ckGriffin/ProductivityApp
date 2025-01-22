@@ -26,9 +26,9 @@
         <div v-else class="notes-list">
           <div 
             v-for="note in sortedNotes" 
-            :key="note.id"
-            :class="['note-item', { active: activeNote === note.id }]"
-            @click="setActiveNote(note.id)"
+            :key="note._id"
+            :class="['note-item', { active: activeNote === note._id }]"
+            @click="setActiveNote(note._id)"
           >
             <div class="note-item-content">
               <h3>{{ note.title }}</h3>
@@ -36,7 +36,7 @@
             </div>
             <button 
               class="delete-button"
-              @click.stop="deleteNote(note.id)"
+              @click.stop="deleteNote(note._id)"
             >×</button>
           </div>
         </div>
@@ -67,6 +67,9 @@
 </template>
 
 <script>
+import { notesApi } from '../services/api'
+import debounce from 'lodash.debounce'
+
 export default {
   name: 'Notes',
   data() {
@@ -78,7 +81,7 @@ export default {
   },
   computed: {
     currentNote() {
-      return this.notes.find(note => note.id === this.activeNote)
+      return this.notes.find(note => note._id === this.activeNote)
     },
     sortedNotes() {
       return [...this.notes].sort((a, b) => {
@@ -87,32 +90,47 @@ export default {
     }
   },
   methods: {
-    createNote() {
+    async createNote() {
       if (this.newNoteTitle.trim()) {
-        const newNote = {
-          id: Date.now(),
-          title: this.newNoteTitle,
-          content: '',
-          lastModified: new Date().toISOString(),
-          created: new Date().toISOString()
+        try {
+          const newNote = await notesApi.createNote({
+            title: this.newNoteTitle
+          })
+          this.notes.push(newNote)
+          this.newNoteTitle = ''
+          this.activeNote = newNote._id
+        } catch (error) {
+          console.error('Error creating note:', error)
         }
-        this.notes.push(newNote)
-        this.newNoteTitle = ''
-        this.activeNote = newNote.id
+      }
+    },
+    async updateNote() {
+      if (this.currentNote) {
+        try {
+          const updatedNote = await notesApi.updateNote(this.currentNote._id, {
+            content: this.currentNote.content
+          })
+          const index = this.notes.findIndex(n => n._id === updatedNote._id)
+          if (index !== -1) {
+            this.notes[index] = updatedNote
+          }
+        } catch (error) {
+          console.error('Error updating note:', error)
+        }
       }
     },
     setActiveNote(noteId) {
       this.activeNote = noteId
     },
-    updateNote() {
-      if (this.currentNote) {
-        this.currentNote.lastModified = new Date().toISOString()
-      }
-    },
-    deleteNote(noteId) {
-      this.notes = this.notes.filter(note => note.id !== noteId)
-      if (this.activeNote === noteId) {
-        this.activeNote = this.notes.length > 0 ? this.notes[0].id : null
+    async deleteNote(noteId) {
+      try {
+        await notesApi.deleteNote(noteId)
+        this.notes = this.notes.filter(note => note._id !== noteId)
+        if (this.activeNote === noteId) {
+          this.activeNote = this.notes.length > 0 ? this.notes[0]._id : null
+        }
+      } catch (error) {
+        console.error('Error deleting note:', error)
       }
     },
     formatDate(date) {
@@ -122,7 +140,27 @@ export default {
         hour: '2-digit',
         minute: '2-digit'
       })
-    },
+    }
+  },
+  created() {
+    // Fetch notes when component is created
+    notesApi.getNotes()
+      .then(notes => {
+        this.notes = notes
+        if (notes.length > 0) {
+          this.activeNote = notes[0]._id
+        }
+      })
+      .catch(error => console.error('Error fetching notes:', error))
+
+    // Create debounced version of updateNote to prevent too many API calls
+    this.updateNote = debounce(this.updateNote, 2000)
+  },
+  beforeUnmount() {
+    // Cancel any pending debounced calls
+    if (this.updateNote.cancel) {
+      this.updateNote.cancel()
+    }
   }
 }
 </script>
