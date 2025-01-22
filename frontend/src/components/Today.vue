@@ -6,14 +6,14 @@
       {{ formattedToday }}
     </div>
 
-    <div class="task-input">
+    <div class="input-group">
       <input 
         v-model="newTask" 
         @keyup.enter="addTask" 
         placeholder="Add a task for today..."
-        class="task-input-field"
+        class="input-field"
       >
-      <button @click="addTask" class="add-button">Add Task</button>
+      <button @click="addTask" class="btn btn-primary">Add Task</button>
     </div>
 
     <div class="tasks-container">
@@ -22,8 +22,8 @@
       </div>
       
       <div v-else class="task-card">
-        <div class="task-header">
-          <div class="task-header-content">
+        <div class="card-header">
+          <div class="header-content">
             <h3>Today's Progress</h3>
             <span class="task-summary">
               {{ completedTasks }} of {{ todaysTasks.length }} tasks completed
@@ -31,15 +31,22 @@
           </div>
         </div>
 
-        <div class="task-content">
-          <div class="progress-bar">
-            <div 
-              class="progress" 
-              :style="{ width: progressPercentage + '%' }"
-            ></div>
+        <div class="card-content">
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div 
+                class="progress" 
+                :style="{ width: progressPercentage + '%' }"
+                role="progressbar"
+                :aria-valuenow="progressPercentage"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              ></div>
+            </div>
+            <span class="progress-text">{{ progressPercentage }}% complete</span>
           </div>
 
-          <ul class="task-list">
+          <ul class="task-items">
             <li 
               v-for="task in sortedTasks" 
               :key="task._id" 
@@ -51,6 +58,7 @@
                   v-model="task.completed"
                   @change="handleTaskUpdate(task)"
                   class="task-checkbox"
+                  :aria-label="'Mark ' + task.text + ' as ' + (task.completed ? 'incomplete' : 'complete')"
                 >
                 <span :class="{ 'task-text': true, 'completed': task.completed }">
                   {{ task.text }}
@@ -58,7 +66,8 @@
               </div>
               <button 
                 @click="deleteTask(task._id)" 
-                class="delete-button"
+                class="delete-btn"
+                :aria-label="'Delete task: ' + task.text"
               >×</button>
             </li>
           </ul>
@@ -95,7 +104,7 @@ export default {
     },
     progressPercentage() {
       if (this.todaysTasks.length === 0) return 0
-      return (this.completedTasks / this.todaysTasks.length) * 100
+      return Math.round((this.completedTasks / this.todaysTasks.length) * 100)
     },
     sortedTasks() {
       return [...this.todaysTasks].sort((a, b) => {
@@ -110,7 +119,6 @@ export default {
     async addTask() {
       if (this.newTask.trim()) {
         try {
-          // Create the task with today's date
           const today = new Date()
           today.setHours(0, 0, 0, 0)
           
@@ -201,51 +209,11 @@ export default {
 </script>
 
 <style scoped>
+/* Layout */
 .today-page {
   width: 100%;
   height: calc(100vh - 140px);
   text-align: left;
-}
-
-.subtitle {
-  color: #666;
-  margin-bottom: 20px;
-  font-size: 1.1em;
-}
-
-.task-input {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
-  width: 100%;
-}
-
-.task-input-field {
-  flex: 1;
-  padding: 12px;
-  border: 2px solid #eee;
-  border-radius: 6px;
-  font-size: 1em;
-}
-
-.task-input-field:focus {
-  outline: none;
-  border-color: #42b983;
-}
-
-.add-button {
-  padding: 12px 24px;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 1em;
-  white-space: nowrap;
-}
-
-.add-button:hover {
-  background-color: #3aa876;
 }
 
 .tasks-container {
@@ -255,40 +223,26 @@ export default {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  height: calc(100% - 140px);
+  overflow-y: auto;
 }
 
-.empty-state {
-  text-align: center;
-  color: #666;
-  padding: 40px 0;
-}
-
+/* Task Card */
 .task-card {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   width: 100%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
 }
 
-.task-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
+/* Card Header */
+.card-header {
+  padding: 20px;
   border-bottom: 1px solid #eee;
-  width: 100%;
-  box-sizing: border-box;
 }
 
-.task-header-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.task-header h3 {
+.header-content h3 {
   margin: 0;
   color: #2c3e50;
 }
@@ -300,11 +254,14 @@ export default {
   display: block;
 }
 
-.task-content {
-  padding: 16px;
-  width: 100%;
-  box-sizing: border-box;
-  min-width: 0;
+/* Card Content */
+.card-content {
+  padding: 20px;
+}
+
+/* Progress Bar */
+.progress-container {
+  margin-bottom: 24px;
 }
 
 .progress-bar {
@@ -312,39 +269,42 @@ export default {
   background-color: #eee;
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 
 .progress {
   height: 100%;
   background-color: #42b983;
-  transition: width 0.3s ease;
+  transition: width 0.5s ease;
 }
 
-.task-list {
+.progress-text {
+  font-size: 0.9em;
+  color: #666;
+}
+
+/* Task Items */
+.task-items {
   list-style: none;
   padding: 0;
   margin: 0;
-  width: 100%;
 }
 
 .task-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
-  background: #f9f9f9;
-  border-radius: 6px;
-  margin-bottom: 8px;
-  transition: all 0.2s ease;
-}
-
-.task-item:hover {
-  background: #f0f0f0;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s;
 }
 
 .task-item:last-child {
-  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.task-item:hover {
+  background-color: #f5f5f5;
 }
 
 .task-item-content {
@@ -352,22 +312,16 @@ export default {
   align-items: center;
   flex: 1;
   min-width: 0;
-}
-
-.task-checkbox {
-  margin-right: 12px;
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  flex-shrink: 0;
+  margin-right: 16px;
 }
 
 .task-text {
   font-size: 1.1em;
-  min-width: 0;
+  margin-left: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.2s, text-decoration 0.2s;
 }
 
 .task-text.completed {
@@ -375,23 +329,73 @@ export default {
   color: #999;
 }
 
-.delete-button {
-  background: none;
-  border: none;
-  color: #ff4444;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0 8px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  flex-shrink: 0;
+/* Enhanced Animation */
+@keyframes taskComplete {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
-.task-item:hover .delete-button {
-  opacity: 0.6;
+.task-checkbox:checked {
+  animation: taskComplete 0.3s ease-in-out;
 }
 
-.delete-button:hover {
-  opacity: 1 !important;
+/* Empty State */
+.empty-state {
+  background: white;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .input-group {
+    flex-direction: column;
+  }
+
+  .task-item {
+    padding: 16px;
+  }
+
+  .delete-btn {
+    opacity: 0.6;
+  }
+}
+
+/* Print styles */
+@media print {
+  .tasks-container {
+    height: auto;
+    overflow: visible;
+    background: none;
+    padding: 0;
+  }
+
+  .task-card {
+    box-shadow: none;
+    border: 1px solid #eee;
+  }
+
+  .delete-btn,
+  .input-group {
+    display: none;
+  }
+
+  .task-text.completed {
+    color: #666;
+  }
+}
+
+/* High Contrast Mode */
+@media (forced-colors: active) {
+  .progress {
+    background-color: Highlight;
+  }
+
+  .task-text.completed {
+    color: GrayText;
+  }
 }
 </style>

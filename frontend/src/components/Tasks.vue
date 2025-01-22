@@ -6,20 +6,20 @@
       Keep track of everything you need to do
     </div>
 
-    <div class="task-input">
+    <div class="input-group">
       <input 
         v-model="newTask.text" 
         @keyup.enter="addTask" 
         placeholder="Add a new task..."
-        class="task-input-field"
+        class="input-field"
       >
       <input 
         type="date"
         v-model="newTask.scheduledDate"
-        class="date-input"
+        class="input-date"
         :min="today"
       >
-      <button @click="addTask" class="add-button">Add Task</button>
+      <button @click="addTask" class="btn btn-primary">Add Task</button>
     </div>
 
     <div class="tasks-container">
@@ -33,8 +33,8 @@
           :key="date" 
           class="task-card"
         >
-          <div class="task-header">
-            <div class="task-header-content">
+          <div class="card-header">
+            <div class="header-content">
               <h3>{{ formatGroupDate(date) }}</h3>
               <span class="task-summary">
                 {{ completedTasksInGroup(group) }}/{{ group.length }} tasks completed
@@ -42,7 +42,7 @@
             </div>
           </div>
 
-          <div class="task-content">
+          <div class="card-content">
             <ul class="task-items">
               <li 
                 v-for="task in sortedTasks(group)" 
@@ -65,12 +65,12 @@
                     type="date"
                     :value="formatDateForInput(task.scheduledDate)"
                     @input="handleDateChange($event, task)"
-                    class="date-input"
+                    class="input-date"
                     :min="today"
                   >
                   <button 
                     @click="deleteTask(task._id)" 
-                    class="delete-button"
+                    class="delete-btn"
                   >×</button>
                 </div>
               </li>
@@ -141,7 +141,6 @@ export default {
     },
 
     async handleTaskUpdate(task) {
-      // Don't update if already pending
       if (this.pendingUpdates.has(task._id)) return
 
       this.pendingUpdates.add(task._id)
@@ -161,7 +160,6 @@ export default {
         
         const index = this.tasks.findIndex(t => t._id === updatedTask._id)
         if (index !== -1) {
-          // Ensure we preserve the date format when updating
           this.tasks.splice(index, 1, {
             ...updatedTask,
             scheduledDate: new Date(updatedTask.scheduledDate).toISOString()
@@ -169,7 +167,6 @@ export default {
         }
       } catch (error) {
         console.error('Error updating task:', error)
-        // Revert the local state if update fails
         const index = this.tasks.findIndex(t => t._id === task._id)
         if (index !== -1) {
           this.tasks[index].completed = !this.tasks[index].completed
@@ -224,10 +221,8 @@ export default {
     }
   },
   created() {
-    // Fetch tasks when component is created
     tasksApi.getTasks()
       .then(tasks => {
-        // Ensure all tasks have properly formatted dates
         this.tasks = tasks.map(task => ({
           ...task,
           scheduledDate: new Date(task.scheduledDate).toISOString()
@@ -235,11 +230,9 @@ export default {
       })
       .catch(error => console.error('Error fetching tasks:', error))
 
-    // Create debounced version of updateTask
     this.debouncedUpdateTask = debounce(this.updateTask, 1000)
   },
   beforeUnmount() {
-    // Cancel any pending debounced calls
     if (this.debouncedUpdateTask?.cancel) {
       this.debouncedUpdateTask.cancel()
     }
@@ -248,62 +241,11 @@ export default {
 </script>
 
 <style scoped>
+/* Layout */
 .tasks-page {
   width: 100%;
   height: calc(100vh - 140px);
   text-align: left;
-}
-
-.subtitle {
-  color: #666;
-  margin-bottom: 20px;
-  font-size: 1.1em;
-}
-
-.task-input {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
-  width: 100%;
-}
-
-.task-input-field {
-  flex: 1;
-  padding: 12px;
-  border: 2px solid #eee;
-  border-radius: 6px;
-  font-size: 1em;
-}
-
-.date-input {
-  padding: 12px;
-  border: 2px solid #eee;
-  border-radius: 6px;
-  font-size: 1em;
-  color: #666;
-  width: 150px;
-  flex-shrink: 0;
-}
-
-.task-input-field:focus,
-.date-input:focus {
-  outline: none;
-  border-color: #42b983;
-}
-
-.add-button {
-  padding: 12px 24px;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 1em;
-  white-space: nowrap;
-}
-
-.add-button:hover {
-  background-color: #3aa876;
 }
 
 .tasks-container {
@@ -313,14 +255,11 @@ export default {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  height: calc(100% - 140px);
+  overflow-y: auto;
 }
 
-.empty-state {
-  text-align: center;
-  color: #666;
-  padding: 40px 0;
-}
-
+/* Task Cards */
 .task-list {
   display: flex;
   flex-direction: column;
@@ -334,27 +273,16 @@ export default {
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   width: 100%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
 }
 
-.task-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* Card Header */
+.card-header {
   padding: 16px;
   border-bottom: 1px solid #eee;
-  width: 100%;
-  box-sizing: border-box;
 }
 
-.task-header-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.task-header h3 {
+.header-content h3 {
   margin: 0;
   color: #2c3e50;
 }
@@ -366,37 +294,28 @@ export default {
   display: block;
 }
 
-.task-content {
-  padding: 16px;
-  width: 100%;
-  box-sizing: border-box;
-  min-width: 0;
-}
-
+/* Task Items */
 .task-items {
   list-style: none;
   padding: 0;
   margin: 0;
-  width: 100%;
 }
 
 .task-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
-  background: #f9f9f9;
-  border-radius: 6px;
-  margin-bottom: 8px;
-  transition: all 0.2s ease;
-}
-
-.task-item:hover {
-  background: #f0f0f0;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s;
 }
 
 .task-item:last-child {
-  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.task-item:hover {
+  background-color: #f5f5f5;
 }
 
 .task-item-content {
@@ -404,19 +323,12 @@ export default {
   align-items: center;
   flex: 1;
   min-width: 0;
-}
-
-.task-checkbox {
-  margin-right: 12px;
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  flex-shrink: 0;
+  margin-right: 16px;
 }
 
 .task-text {
   font-size: 1.1em;
-  min-width: 0;
+  margin-left: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -427,29 +339,70 @@ export default {
   color: #999;
 }
 
+/* Task Actions */
 .task-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
-.delete-button {
-  background: none;
-  border: none;
-  color: #ff4444;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0 8px;
+.delete-btn {
   opacity: 0;
-  transition: opacity 0.2s ease;
-  flex-shrink: 0;
 }
 
-.task-item:hover .delete-button {
+.task-item:hover .delete-btn {
   opacity: 0.6;
 }
 
-.delete-button:hover {
-  opacity: 1 !important;
+/* Empty State */
+.empty-state {
+  background: white;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .input-group {
+    flex-direction: column;
+  }
+
+  .input-date {
+    width: 100%;
+  }
+
+  .task-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .task-actions {
+    justify-content: space-between;
+  }
+
+  .delete-btn {
+    opacity: 0.6;
+  }
+}
+
+/* Print styles */
+@media print {
+  .tasks-container {
+    height: auto;
+    overflow: visible;
+  }
+
+  .task-card {
+    break-inside: avoid;
+    margin-bottom: 20px;
+  }
+
+  .delete-btn,
+  .input-group {
+    display: none;
+  }
 }
 </style>

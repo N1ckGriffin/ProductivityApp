@@ -6,14 +6,14 @@
       Organize your projects, tasks, and project notes
     </div>
 
-    <div class="project-input">
+    <div class="input-group">
       <input 
         v-model="newProject" 
         @keyup.enter="addProject" 
         placeholder="Create a new project..."
-        class="project-input-field"
+        class="input-field"
       >
-      <button @click="addProject" class="add-button">Create Project</button>
+      <button @click="addProject" class="btn btn-primary">Create Project</button>
     </div>
 
     <div class="projects-container">
@@ -60,20 +60,20 @@
 
             <!-- Tasks Tab -->
             <div v-if="project.activeTab === 'tasks'" class="tab-content">
-              <div class="task-input">
+              <div class="input-group">
                 <input 
                   v-model="project.newTask" 
                   @keyup.enter="addTaskToProject(project._id)"
                   placeholder="Add a task to this project..."
-                  class="task-input-field"
+                  class="input-field"
                 >
                 <button 
                   @click="addTaskToProject(project._id)"
-                  class="add-button"
+                  class="btn btn-primary"
                 >Add Task</button>
               </div>
 
-              <div v-if="project.tasks.length === 0" class="empty-tab-state">
+              <div v-if="project.tasks.length === 0" class="empty-state">
                 <p>No tasks in this project yet. Add your first task above!</p>
               </div>
 
@@ -83,7 +83,7 @@
                   :key="task._id"
                   class="task-item"
                 >
-                  <div class="task-content">
+                  <div class="task-item-content">
                     <input 
                       type="checkbox" 
                       v-model="task.completed"
@@ -96,7 +96,7 @@
                   </div>
                   <button 
                     @click="deleteTask(project, task._id)" 
-                    class="delete-button"
+                    class="delete-btn"
                   >×</button>
                 </li>
               </ul>
@@ -107,20 +107,20 @@
               <div class="notes-section">
                 <div class="note-list">
                   <!-- Note Creation -->
-                  <div class="note-input">
+                  <div class="input-group">
                     <input 
                       v-model="project.newNoteTitle" 
                       @keyup.enter="addNoteToProject(project._id)"
                       placeholder="New note title..."
-                      class="note-input-field"
+                      class="input-field"
                     >
                     <button 
                       @click="addNoteToProject(project._id)"
-                      class="add-button"
+                      class="btn btn-primary"
                     >Add Note</button>
                   </div>
 
-                  <div v-if="project.notes.length === 0" class="empty-tab-state">
+                  <div v-if="project.notes.length === 0" class="empty-state">
                     <p>No notes in this project yet. Create your first note above!</p>
                   </div>
 
@@ -138,7 +138,7 @@
                       </div>
                       <button 
                         @click.stop="deleteNote(project, note._id)"
-                        class="delete-button"
+                        class="delete-btn"
                       >×</button>
                     </div>
                   </div>
@@ -360,55 +360,9 @@ export default {
 </script>
 
 <style scoped>
+/* Layout */
 .projects-page {
-  width: 100%;
-  height: calc(100vh - 140px);
-  text-align: left;
-}
-
-.subtitle {
-  color: #666;
-  margin-bottom: 20px;
-  font-size: 1.1em;
-}
-
-.project-input {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
-  width: 100%;
-}
-
-.project-input-field,
-.task-input-field,
-.note-input-field {
-  flex: 1;
-  padding: 12px;
-  border: 2px solid #eee;
-  border-radius: 6px;
-  font-size: 1em;
-}
-
-.project-input-field:focus,
-.task-input-field:focus,
-.note-input-field:focus {
-  outline: none;
-  border-color: #42b983;
-}
-
-.add-button {
-  padding: 12px 24px;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 1em;
-  white-space: nowrap;
-}
-
-.add-button:hover {
-  background-color: #3aa876;
+  composes: page;
 }
 
 .projects-container {
@@ -420,17 +374,7 @@ export default {
   box-sizing: border-box;
 }
 
-.empty-state,
-.empty-tab-state {
-  text-align: center;
-  color: #666;
-  padding: 40px 0;
-}
-
-.empty-tab-state {
-  padding: 20px 0;
-}
-
+/* Project Cards */
 .project-list {
   display: flex;
   flex-direction: column;
@@ -440,11 +384,7 @@ export default {
 }
 
 .project-card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  min-width: 0;
+  composes: card;
   display: flex;
   flex-direction: column;
 }
@@ -453,6 +393,7 @@ export default {
   width: 100%;
 }
 
+/* Project Header */
 .project-header {
   display: flex;
   justify-content: space-between;
@@ -471,11 +412,6 @@ export default {
 .project-header-content {
   flex: 1;
   min-width: 0;
-}
-
-.project-header h3 {
-  margin: 0;
-  color: #2c3e50;
 }
 
 .project-summary {
@@ -500,6 +436,7 @@ export default {
   flex-shrink: 0;
 }
 
+/* Project Content */
 .project-content {
   padding: 16px;
   width: 100%;
@@ -507,92 +444,7 @@ export default {
   min-width: 0;
 }
 
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  width: 100%;
-}
-
-.tab-button {
-  padding: 8px 16px;
-  border: none;
-  background: #eee;
-  color: #666;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 1em;
-}
-
-.tab-button.active {
-  background: #42b983;
-  color: white;
-}
-
-.tab-content {
-  width: 100%;
-  min-width: 0;
-}
-
-.task-input,
-.note-input {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-  width: 100%;
-}
-
-.task-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  width: 100%;
-  height: 300px;
-  overflow-y: auto;
-}
-
-.task-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  border-bottom: 1px solid #eee;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.task-item:last-child {
-  border-bottom: none;
-}
-
-.task-content {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-}
-
-.task-checkbox {
-  margin-right: 12px;
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.task-text {
-  font-size: 1.1em;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.task-text.completed {
-  text-decoration: line-through;
-  color: #999;
-}
-
+/* Notes Section */
 .notes-section {
   display: flex;
   gap: 20px;
@@ -610,126 +462,59 @@ export default {
   flex-shrink: 0;
 }
 
-.note-item {
+/* Task List */
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 300px;
+  overflow-y: auto;
+}
+
+.task-item {
   display: flex;
-  align-items: start;
+  align-items: center;
+  justify-content: space-between;
   padding: 12px;
-  margin-bottom: 8px;
   background: #f9f9f9;
   border-radius: 6px;
-  cursor: pointer;
+  margin-bottom: 8px;
   transition: all 0.2s ease;
 }
 
-.note-item:hover {
+.task-item:hover {
   background: #f0f0f0;
 }
 
-.note-item.active {
-  background: #e3f2fd;
+.task-item:last-child {
+  margin-bottom: 0;
 }
 
-.note-item-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.note-item h4 {
-  margin: 0 0 4px 0;
-  font-size: 1.1em;
-  color: #2c3e50;
-}
-
-.note-metadata {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.note-preview {
-  font-size: 0.9em;
-  color: #666;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.note-date {
-  font-size: 0.8em;
-  color: #999;
-}
-
-.delete-button {
-  background: none;
-  border: none;
-  color: #ff4444;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0 8px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  flex-shrink: 0;
-}
-
-.note-item:hover .delete-button {
-  opacity: 0.6;
-}
-
-.delete-button:hover {
-  opacity: 1 !important;
-}
-
-.note-editor {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  border-radius: 6px;
-  overflow: hidden;
-  min-width: 0;
-}
-
-.editor-header {
-  padding: 16px;
-  border-bottom: 1px solid #eee;
-}
-
-.editor-header h4 {
-  margin: 0 0 8px 0;
-  color: #2c3e50;
-}
-
-.last-modified {
-  font-size: 0.9em;
-  color: #666;
-}
-
-.note-textarea {
-  flex: 1;
-  width: 100%;
-  padding: 16px;
-  border: none;
-  resize: none;
-  font-size: 16px;
-  line-height: 1.6;
-  color: #2c3e50;
-  box-sizing: border-box;
-}
-
-.note-textarea:focus {
-  outline: none;
-}
-
-.empty-editor-state {
-  flex: 1;
+.task-item-content {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #666;
-  font-size: 1.1em;
-  padding: 20px;
-  background: #f9f9f9;
-  text-align: center;
-  border-radius: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .notes-section {
+    flex-direction: column;
+  }
+
+  .note-list {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #eee;
+    padding-right: 0;
+    padding-bottom: 16px;
+  }
+
+  .project-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>

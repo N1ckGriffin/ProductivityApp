@@ -10,16 +10,18 @@
       <!-- Sidebar -->
       <div class="notes-sidebar">
         <div class="note-input">
-          <input 
-            v-model="newNoteTitle" 
-            @keyup.enter="createNote"
-            placeholder="Create a new note..."
-            class="note-input-field"
-          >
-          <button @click="createNote" class="add-button">Create Note</button>
+          <div class="input-group">
+            <input 
+              v-model="newNoteTitle" 
+              @keyup.enter="createNote"
+              placeholder="Create a new note..."
+              class="input-field"
+            >
+            <button @click="createNote" class="btn btn-primary">Create Note</button>
+          </div>
         </div>
         
-        <div v-if="notes.length === 0" class="empty-sidebar-state">
+        <div v-if="notes.length === 0" class="empty-state">
           <p>No notes yet. Create your first note to get started!</p>
         </div>
 
@@ -35,7 +37,7 @@
               <span class="note-date">{{ formatDate(note.lastModified) }}</span>
             </div>
             <button 
-              class="delete-button"
+              class="delete-btn"
               @click.stop="deleteNote(note._id)"
             >×</button>
           </div>
@@ -166,21 +168,16 @@ export default {
 </script>
 
 <style scoped>
+/* Layout */
 .notes-page {
   width: 100%;
   height: calc(100vh - 140px);
   text-align: left;
 }
 
-.subtitle {
-  color: #666;
-  margin-bottom: 20px;
-  font-size: 1.1em;
-}
-
 .notes-container {
   display: flex;
-  height: calc(100% - 100px);
+  height: calc(100vh - 240px);
   width: 100%;
   overflow: hidden;
   background: white;
@@ -188,6 +185,7 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Sidebar */
 .notes-sidebar {
   width: 300px;
   background: white;
@@ -196,31 +194,12 @@ export default {
   flex-direction: column;
   border-radius: 8px 0 0 8px;
   flex-shrink: 0;
+  max-height: 100%;
 }
 
 .note-input {
   padding: 16px;
   border-bottom: 1px solid #eee;
-}
-
-.note-input-field {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #eee;
-  border-radius: 6px;
-  font-size: 1em;
-  margin-bottom: 10px;
-}
-
-.note-input-field:focus {
-  outline: none;
-  border-color: #42b983;
-}
-
-.empty-sidebar-state {
-  padding: 20px;
-  text-align: center;
-  color: #666;
 }
 
 .notes-list {
@@ -229,6 +208,7 @@ export default {
   padding: 10px;
 }
 
+/* Note Items */
 .note-item {
   display: flex;
   align-items: start;
@@ -257,6 +237,9 @@ export default {
   margin: 0 0 4px 0;
   font-size: 1.1em;
   color: #2c3e50;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .note-metadata {
@@ -298,6 +281,7 @@ export default {
   opacity: 1 !important;
 }
 
+/* Note Editor */
 .note-editor {
   flex: 1;
   display: flex;
@@ -305,6 +289,7 @@ export default {
   background: white;
   border-radius: 0 8px 8px 0;
   overflow: hidden;
+  min-width: 0;
 }
 
 .editor-header {
@@ -331,6 +316,7 @@ export default {
   font-size: 16px;
   line-height: 1.6;
   color: #2c3e50;
+  min-height: 0;
 }
 
 .note-textarea:focus {
@@ -349,6 +335,27 @@ export default {
   text-align: center;
 }
 
+.empty-sidebar-state {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+}
+
+/* Input styles */
+.note-input-field {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #eee;
+  border-radius: 6px;
+  font-size: 1em;
+  margin-bottom: 10px;
+}
+
+.note-input-field:focus {
+  outline: none;
+  border-color: #42b983;
+}
+
 .add-button {
   padding: 12px 24px;
   background-color: #42b983;
@@ -362,5 +369,25 @@ export default {
 
 .add-button:hover {
   background-color: #3aa876;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .notes-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .notes-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #eee;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .note-editor {
+    border-radius: 0 0 8px 8px;
+    height: calc(100vh - 500px);
+  }
 }
 </style>
