@@ -22,10 +22,16 @@ router.get('/', auth, async (req, res) => {
       };
     }
 
-    const tasks = await Task.find(query)
-      .sort({ completed: 1, scheduledDate: 1 });
-      
-    res.json(tasks);
+    const tasks = await Task.find(query).sort({ completed: 1, scheduledDate: 1 });
+    
+    // Format dates as ISO strings for consistency
+    const formattedTasks = tasks.map(task => {
+      const taskObj = task.toObject();
+      taskObj.scheduledDate = task.scheduledDate.toISOString();
+      return taskObj;
+    });
+    
+    res.json(formattedTasks);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching tasks' });
   }
@@ -34,21 +40,21 @@ router.get('/', auth, async (req, res) => {
 // Create a new task
 router.post('/', auth, async (req, res) => {
   try {
-    // If no scheduled date provided, default to today
-    const scheduledDate = req.body.scheduledDate ? 
-      new Date(req.body.scheduledDate) : 
-      new Date();
-
     const task = new Task({
       userId: req.user._id,
       text: req.body.text,
       completed: false,
-      scheduledDate: scheduledDate,
+      scheduledDate: new Date(req.body.scheduledDate),
       created: new Date()
     });
 
     await task.save();
-    res.status(201).json(task);
+    
+    // Format dates as ISO strings for consistency
+    const taskObj = task.toObject();
+    taskObj.scheduledDate = task.scheduledDate.toISOString();
+    
+    res.status(201).json(taskObj);
   } catch (error) {
     res.status(400).json({ message: 'Error creating task' });
   }
@@ -70,15 +76,20 @@ router.patch('/:id', auth, async (req, res) => {
     if (req.body.completed !== undefined) {
       task.completed = req.body.completed;
     }
-    if (req.body.scheduledDate) {
+    if (req.body.scheduledDate !== undefined) {
       task.scheduledDate = new Date(req.body.scheduledDate);
     }
-    if (req.body.text) {
+    if (req.body.text !== undefined) {
       task.text = req.body.text;
     }
 
     await task.save();
-    res.json(task);
+    
+    // Format dates as ISO strings for consistency
+    const taskObj = task.toObject();
+    taskObj.scheduledDate = task.scheduledDate.toISOString();
+    
+    res.json(taskObj);
   } catch (error) {
     res.status(400).json({ message: 'Error updating task' });
   }
@@ -96,7 +107,11 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    res.json(task);
+    // Format dates as ISO strings for consistency
+    const taskObj = task.toObject();
+    taskObj.scheduledDate = task.scheduledDate.toISOString();
+    
+    res.json(taskObj);
   } catch (error) {
     res.status(500).json({ message: 'Error deleting task' });
   }

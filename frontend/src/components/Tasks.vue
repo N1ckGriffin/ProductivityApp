@@ -53,7 +53,7 @@
                   <input 
                     type="checkbox" 
                     v-model="task.completed"
-                    @change="updateTask(task)"
+                    @change="handleTaskUpdate(task)"
                     class="task-checkbox"
                   >
                   <span :class="{ 'task-text': true, 'completed': task.completed }">
@@ -63,10 +63,10 @@
                 <div class="task-actions">
                   <input 
                     type="date"
-                    v-model="task.scheduledDate"
+                    :value="formatDateForInput(task.scheduledDate)"
+                    @input="handleDateChange($event, task)"
                     class="date-input"
                     :min="today"
-                    @change="updateTask(task)"
                   >
                   <button 
                     @click="deleteTask(task._id)" 
@@ -94,7 +94,8 @@ export default {
         text: '',
         scheduledDate: new Date().toISOString().split('T')[0]
       },
-      tasks: []
+      tasks: [],
+      pendingUpdates: new Set() // Track tasks being updated
     }
   },
   computed: {
@@ -105,17 +106,17 @@ export default {
       const groups = {}
       
       const sortedTasks = [...this.tasks].sort((a, b) => {
-        if (a.scheduledDate !== b.scheduledDate) {
-          return a.scheduledDate.localeCompare(b.scheduledDate)
-        }
-        return 0
+        const dateA = new Date(a.scheduledDate)
+        const dateB = new Date(b.scheduledDate)
+        return dateA - dateB
       })
 
       sortedTasks.forEach(task => {
-        if (!groups[task.scheduledDate]) {
-          groups[task.scheduledDate] = []
+        const dateKey = new Date(task.scheduledDate).toISOString().split('T')[0]
+        if (!groups[dateKey]) {
+          groups[dateKey] = []
         }
-        groups[task.scheduledDate].push(task)
+        groups[dateKey].push(task)
       })
 
       return groups
@@ -127,26 +128,65 @@ export default {
         try {
           const task = await tasksApi.createTask({
             text: this.newTask.text,
-            scheduledDate: this.newTask.scheduledDate,
+            scheduledDate: new Date(this.newTask.scheduledDate).toISOString(),
           })
           this.tasks.push(task)
           this.newTask.text = ''
+          // Reset date to today after adding task
+          this.newTask.scheduledDate = new Date().toISOString().split('T')[0]
         } catch (error) {
           console.error('Error creating task:', error)
         }
       }
     },
+
+    async handleTaskUpdate(task) {
+      // Don't update if already pending
+      if (this.pendingUpdates.has(task._id)) return
+
+      this.pendingUpdates.add(task._id)
+      try {
+        await this.debouncedUpdateTask(task)
+      } finally {
+        this.pendingUpdates.delete(task._id)
+      }
+    },
+
     async updateTask(task) {
       try {
-        const updatedTask = await tasksApi.updateTask(task._id, task)
+        const updatedTask = await tasksApi.updateTask(task._id, {
+          completed: task.completed,
+          scheduledDate: new Date(task.scheduledDate).toISOString()
+        })
+        
         const index = this.tasks.findIndex(t => t._id === updatedTask._id)
         if (index !== -1) {
-          this.tasks[index] = updatedTask
+          // Ensure we preserve the date format when updating
+          this.tasks.splice(index, 1, {
+            ...updatedTask,
+            scheduledDate: new Date(updatedTask.scheduledDate).toISOString()
+          })
         }
       } catch (error) {
         console.error('Error updating task:', error)
+        // Revert the local state if update fails
+        const index = this.tasks.findIndex(t => t._id === task._id)
+        if (index !== -1) {
+          this.tasks[index].completed = !this.tasks[index].completed
+        }
       }
     },
+
+    handleDateChange(event, task) {
+      const newDate = event.target.value
+      task.scheduledDate = newDate
+      this.handleTaskUpdate(task)
+    },
+
+    formatDateForInput(date) {
+      return new Date(date).toISOString().split('T')[0]
+    },
+
     async deleteTask(taskId) {
       try {
         await tasksApi.deleteTask(taskId)
@@ -155,6 +195,7 @@ export default {
         console.error('Error deleting task:', error)
       }
     },
+
     formatGroupDate(date) {
       const today = new Date().toISOString().split('T')[0]
       const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
@@ -168,9 +209,11 @@ export default {
         day: 'numeric'
       })
     },
+
     completedTasksInGroup(tasks) {
       return tasks.filter(task => task.completed).length
     },
+
     sortedTasks(tasks) {
       return [...tasks].sort((a, b) => {
         if (a.completed !== b.completed) {
@@ -184,17 +227,21 @@ export default {
     // Fetch tasks when component is created
     tasksApi.getTasks()
       .then(tasks => {
-        this.tasks = tasks
+        // Ensure all tasks have properly formatted dates
+        this.tasks = tasks.map(task => ({
+          ...task,
+          scheduledDate: new Date(task.scheduledDate).toISOString()
+        }))
       })
       .catch(error => console.error('Error fetching tasks:', error))
 
-    // Create debounced version of updateTask to prevent too many API calls
-    this.updateTask = debounce(this.updateTask, 1000)
+    // Create debounced version of updateTask
+    this.debouncedUpdateTask = debounce(this.updateTask, 1000)
   },
   beforeUnmount() {
     // Cancel any pending debounced calls
-    if (this.updateTask.cancel) {
-      this.updateTask.cancel()
+    if (this.debouncedUpdateTask?.cancel) {
+      this.debouncedUpdateTask.cancel()
     }
   }
 }

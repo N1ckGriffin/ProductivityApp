@@ -3,7 +3,7 @@
   <div class="today-page">
     <h1>Today's Tasks</h1>
     <div class="subtitle">
-      {{ today }}
+      {{ formattedToday }}
     </div>
 
     <div class="task-input">
@@ -41,7 +41,7 @@
 
           <ul class="task-list">
             <li 
-              v-for="task in todaysTasks" 
+              v-for="task in sortedTasks" 
               :key="task._id" 
               class="task-item"
             >
@@ -49,6 +49,7 @@
                 <input 
                   type="checkbox" 
                   v-model="task.completed"
+                  @change="handleTaskUpdate(task)"
                   class="task-checkbox"
                 >
                 <span :class="{ 'task-text': true, 'completed': task.completed }">
@@ -69,6 +70,7 @@
 
 <script>
 import { tasksApi } from '../services/api'
+import debounce from 'lodash.debounce'
 
 export default {
   name: 'Today',
@@ -76,31 +78,47 @@ export default {
     return {
       newTask: '',
       todaysTasks: [],
-      today: new Date().toLocaleDateString('en-US', {
+      pendingUpdates: new Set()
+    }
+  },
+  computed: {
+    formattedToday() {
+      return new Date().toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       })
-    }
-  },
-  computed: {
+    },
     completedTasks() {
       return this.todaysTasks.filter(task => task.completed).length
     },
     progressPercentage() {
       if (this.todaysTasks.length === 0) return 0
       return (this.completedTasks / this.todaysTasks.length) * 100
+    },
+    sortedTasks() {
+      return [...this.todaysTasks].sort((a, b) => {
+        if (a.completed !== b.completed) {
+          return a.completed ? 1 : -1
+        }
+        return new Date(b.created) - new Date(a.created)
+      })
     }
   },
   methods: {
     async addTask() {
       if (this.newTask.trim()) {
         try {
+          // Create the task with today's date
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          
           const task = await tasksApi.createTask({
             text: this.newTask,
-            scheduledDate: new Date().toISOString().split('T')[0]
+            scheduledDate: today.toISOString()
           })
+          
           this.todaysTasks.push(task)
           this.newTask = ''
         } catch (error) {
@@ -108,19 +126,38 @@ export default {
         }
       }
     },
+
+    async handleTaskUpdate(task) {
+      if (this.pendingUpdates.has(task._id)) return
+      
+      this.pendingUpdates.add(task._id)
+      try {
+        await this.debouncedUpdateTask(task)
+      } finally {
+        this.pendingUpdates.delete(task._id)
+      }
+    },
+
     async updateTask(task) {
       try {
         const updatedTask = await tasksApi.updateTask(task._id, {
           completed: task.completed
         })
+        
         const index = this.todaysTasks.findIndex(t => t._id === updatedTask._id)
         if (index !== -1) {
-          this.todaysTasks[index] = updatedTask
+          this.todaysTasks.splice(index, 1, updatedTask)
         }
       } catch (error) {
         console.error('Error updating task:', error)
+        // Revert the local state if update fails
+        const index = this.todaysTasks.findIndex(t => t._id === task._id)
+        if (index !== -1) {
+          this.todaysTasks[index].completed = !this.todaysTasks[index].completed
+        }
       }
     },
+
     async deleteTask(taskId) {
       try {
         await tasksApi.deleteTask(taskId)
@@ -128,15 +165,37 @@ export default {
       } catch (error) {
         console.error('Error deleting task:', error)
       }
+    },
+
+    async fetchTodaysTasks() {
+      try {
+        const tasks = await tasksApi.getTodayTasks()
+        this.todaysTasks = tasks
+      } catch (error) {
+        console.error('Error fetching today\'s tasks:', error)
+      }
     }
   },
   created() {
-    // Fetch today's tasks when component is created
-    tasksApi.getTodayTasks()
-      .then(tasks => {
-        this.todaysTasks = tasks
-      })
-      .catch(error => console.error('Error fetching today\'s tasks:', error))
+    // Initial fetch of today's tasks
+    this.fetchTodaysTasks()
+
+    // Create debounced version of updateTask
+    this.debouncedUpdateTask = debounce(this.updateTask, 1000)
+
+    // Set up polling to refresh tasks periodically
+    this.pollInterval = setInterval(() => {
+      this.fetchTodaysTasks()
+    }, 30000) // Refresh every 30 seconds
+  },
+  beforeUnmount() {
+    // Clean up
+    if (this.debouncedUpdateTask?.cancel) {
+      this.debouncedUpdateTask.cancel()
+    }
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval)
+    }
   }
 }
 </script>
