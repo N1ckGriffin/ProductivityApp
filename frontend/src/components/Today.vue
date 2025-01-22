@@ -42,7 +42,7 @@
           <ul class="task-list">
             <li 
               v-for="task in todaysTasks" 
-              :key="task.id" 
+              :key="task._id" 
               class="task-item"
             >
               <div class="task-item-content">
@@ -56,7 +56,7 @@
                 </span>
               </div>
               <button 
-                @click="deleteTask(task.id)" 
+                @click="deleteTask(task._id)" 
                 class="delete-button"
               >×</button>
             </li>
@@ -68,6 +68,8 @@
 </template>
 
 <script>
+import { tasksApi } from '../services/api'
+
 export default {
   name: 'Today',
   data() {
@@ -92,20 +94,49 @@ export default {
     }
   },
   methods: {
-    addTask() {
+    async addTask() {
       if (this.newTask.trim()) {
-        this.todaysTasks.push({
-          id: Date.now(),
-          text: this.newTask,
-          completed: false,
-          created: new Date()
-        })
-        this.newTask = ''
+        try {
+          const task = await tasksApi.createTask({
+            text: this.newTask,
+            scheduledDate: new Date().toISOString().split('T')[0]
+          })
+          this.todaysTasks.push(task)
+          this.newTask = ''
+        } catch (error) {
+          console.error('Error creating task:', error)
+        }
       }
     },
-    deleteTask(taskId) {
-      this.todaysTasks = this.todaysTasks.filter(task => task.id !== taskId)
+    async updateTask(task) {
+      try {
+        const updatedTask = await tasksApi.updateTask(task._id, {
+          completed: task.completed
+        })
+        const index = this.todaysTasks.findIndex(t => t._id === updatedTask._id)
+        if (index !== -1) {
+          this.todaysTasks[index] = updatedTask
+        }
+      } catch (error) {
+        console.error('Error updating task:', error)
+      }
+    },
+    async deleteTask(taskId) {
+      try {
+        await tasksApi.deleteTask(taskId)
+        this.todaysTasks = this.todaysTasks.filter(task => task._id !== taskId)
+      } catch (error) {
+        console.error('Error deleting task:', error)
+      }
     }
+  },
+  created() {
+    // Fetch today's tasks when component is created
+    tasksApi.getTodayTasks()
+      .then(tasks => {
+        this.todaysTasks = tasks
+      })
+      .catch(error => console.error('Error fetching today\'s tasks:', error))
   }
 }
 </script>

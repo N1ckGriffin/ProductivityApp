@@ -46,13 +46,14 @@
             <ul class="task-items">
               <li 
                 v-for="task in sortedTasks(group)" 
-                :key="task.id" 
+                :key="task._id" 
                 class="task-item"
               >
                 <div class="task-item-content">
                   <input 
                     type="checkbox" 
                     v-model="task.completed"
+                    @change="updateTask(task)"
                     class="task-checkbox"
                   >
                   <span :class="{ 'task-text': true, 'completed': task.completed }">
@@ -68,7 +69,7 @@
                     @change="updateTask(task)"
                   >
                   <button 
-                    @click="deleteTask(task.id)" 
+                    @click="deleteTask(task._id)" 
                     class="delete-button"
                   >×</button>
                 </div>
@@ -82,6 +83,9 @@
 </template>
 
 <script>
+import { tasksApi } from '../services/api'
+import debounce from 'lodash.debounce'
+
 export default {
   name: 'Tasks',
   data() {
@@ -118,34 +122,38 @@ export default {
     }
   },
   methods: {
-    addTask() {
+    async addTask() {
       if (this.newTask.text.trim()) {
-        this.tasks.push({
-          id: Date.now(),
-          text: this.newTask.text,
-          completed: false,
-          created: new Date(),
-          scheduledDate: this.newTask.scheduledDate
-        })
-        this.newTask.text = ''
-      }
-    },
-    deleteTask(taskId) {
-      this.tasks = this.tasks.filter(task => task.id !== taskId)
-    },
-    updateTask(task) {
-      const index = this.tasks.findIndex(t => t.id === task.id)
-      if (index !== -1) {
-        this.tasks[index] = { ...task }
-      }
-    },
-    sortedTasks(tasks) {
-      return [...tasks].sort((a, b) => {
-        if (a.completed !== b.completed) {
-          return a.completed ? 1 : -1
+        try {
+          const task = await tasksApi.createTask({
+            text: this.newTask.text,
+            scheduledDate: this.newTask.scheduledDate,
+          })
+          this.tasks.push(task)
+          this.newTask.text = ''
+        } catch (error) {
+          console.error('Error creating task:', error)
         }
-        return 0
-      })
+      }
+    },
+    async updateTask(task) {
+      try {
+        const updatedTask = await tasksApi.updateTask(task._id, task)
+        const index = this.tasks.findIndex(t => t._id === updatedTask._id)
+        if (index !== -1) {
+          this.tasks[index] = updatedTask
+        }
+      } catch (error) {
+        console.error('Error updating task:', error)
+      }
+    },
+    async deleteTask(taskId) {
+      try {
+        await tasksApi.deleteTask(taskId)
+        this.tasks = this.tasks.filter(task => task._id !== taskId)
+      } catch (error) {
+        console.error('Error deleting task:', error)
+      }
     },
     formatGroupDate(date) {
       const today = new Date().toISOString().split('T')[0]
@@ -162,6 +170,31 @@ export default {
     },
     completedTasksInGroup(tasks) {
       return tasks.filter(task => task.completed).length
+    },
+    sortedTasks(tasks) {
+      return [...tasks].sort((a, b) => {
+        if (a.completed !== b.completed) {
+          return a.completed ? 1 : -1
+        }
+        return 0
+      })
+    }
+  },
+  created() {
+    // Fetch tasks when component is created
+    tasksApi.getTasks()
+      .then(tasks => {
+        this.tasks = tasks
+      })
+      .catch(error => console.error('Error fetching tasks:', error))
+
+    // Create debounced version of updateTask to prevent too many API calls
+    this.updateTask = debounce(this.updateTask, 1000)
+  },
+  beforeUnmount() {
+    // Cancel any pending debounced calls
+    if (this.updateTask.cancel) {
+      this.updateTask.cancel()
     }
   }
 }

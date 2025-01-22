@@ -24,11 +24,11 @@
       <div v-else class="project-list">
         <div 
           v-for="project in projects" 
-          :key="project.id" 
+          :key="project._id" 
           class="project-card"
           :class="{ 'expanded': project.isExpanded }"
         >
-          <div class="project-header" @click="toggleProject(project.id)">
+          <div class="project-header" @click="toggleProject(project._id)">
             <div class="project-header-content">
               <h3>{{ project.name }}</h3>
               <span class="project-summary">
@@ -63,12 +63,12 @@
               <div class="task-input">
                 <input 
                   v-model="project.newTask" 
-                  @keyup.enter="addTaskToProject(project.id)"
+                  @keyup.enter="addTaskToProject(project._id)"
                   placeholder="Add a task to this project..."
                   class="task-input-field"
                 >
                 <button 
-                  @click="addTaskToProject(project.id)"
+                  @click="addTaskToProject(project._id)"
                   class="add-button"
                 >Add Task</button>
               </div>
@@ -80,13 +80,14 @@
               <ul v-else class="task-list">
                 <li 
                   v-for="task in sortedTasks(project.tasks)" 
-                  :key="task.id"
+                  :key="task._id"
                   class="task-item"
                 >
                   <div class="task-content">
                     <input 
                       type="checkbox" 
                       v-model="task.completed"
+                      @change="updateTask(project, task)"
                       class="task-checkbox"
                     >
                     <span :class="{ 'task-text': true, 'completed': task.completed }">
@@ -94,7 +95,7 @@
                     </span>
                   </div>
                   <button 
-                    @click="deleteTask(project, task.id)" 
+                    @click="deleteTask(project, task._id)" 
                     class="delete-button"
                   >×</button>
                 </li>
@@ -109,12 +110,12 @@
                   <div class="note-input">
                     <input 
                       v-model="project.newNoteTitle" 
-                      @keyup.enter="addNoteToProject(project.id)"
+                      @keyup.enter="addNoteToProject(project._id)"
                       placeholder="New note title..."
                       class="note-input-field"
                     >
                     <button 
-                      @click="addNoteToProject(project.id)"
+                      @click="addNoteToProject(project._id)"
                       class="add-button"
                     >Add Note</button>
                   </div>
@@ -127,16 +128,16 @@
                   <div v-else class="notes-list">
                     <div 
                       v-for="note in sortedNotes(project.notes)" 
-                      :key="note.id"
-                      :class="['note-item', { active: project.activeNoteId === note.id }]"
-                      @click="setActiveNote(project, note.id)"
+                      :key="note._id"
+                      :class="['note-item', { active: project.activeNoteId === note._id }]"
+                      @click="setActiveNote(project, note._id)"
                     >
                       <div class="note-item-content">
                         <h4>{{ note.title }}</h4>
                         <span class="note-date">{{ formatDate(note.lastModified) }}</span>
                       </div>
                       <button 
-                        @click.stop="deleteNote(project, note.id)"
+                        @click.stop="deleteNote(project, note._id)"
                         class="delete-button"
                       >×</button>
                     </div>
@@ -173,6 +174,9 @@
 </template>
 
 <script>
+import { projectsApi } from '../services/api'
+import debounce from 'lodash.debounce'
+
 export default {
   name: 'Projects',
   data() {
@@ -182,76 +186,123 @@ export default {
     }
   },
   methods: {
-    addProject() {
+    async addProject() {
       if (this.newProject.trim()) {
-        this.projects.push({
-          id: Date.now(),
-          name: this.newProject,
-          tasks: [],
-          notes: [],
-          newTask: '',
-          newNoteTitle: '',
-          isExpanded: true,
-          activeTab: 'tasks',
-          activeNoteId: null
-        })
-        this.newProject = ''
+        try {
+          const project = await projectsApi.createProject({
+            name: this.newProject
+          })
+          project.tasks = []
+          project.notes = []
+          project.newTask = ''
+          project.newNoteTitle = ''
+          project.isExpanded = true
+          project.activeTab = 'tasks'
+          project.activeNoteId = null
+          this.projects.push(project)
+          this.newProject = ''
+        } catch (error) {
+          console.error('Error creating project:', error)
+        }
       }
     },
+
     toggleProject(projectId) {
-      const project = this.projects.find(p => p.id === projectId)
+      const project = this.projects.find(p => p._id === projectId)
       if (project) {
         project.isExpanded = !project.isExpanded
       }
     },
-    addTaskToProject(projectId) {
-      const project = this.projects.find(p => p.id === projectId)
+
+    async addTaskToProject(projectId) {
+      const project = this.projects.find(p => p._id === projectId)
       if (project && project.newTask.trim()) {
-        project.tasks.push({
-          id: Date.now(),
-          text: project.newTask,
-          completed: false,
-          created: new Date().toISOString()
-        })
-        project.newTask = ''
-      }
-    },
-    addNoteToProject(projectId) {
-      const project = this.projects.find(p => p.id === projectId)
-      if (project && project.newNoteTitle.trim()) {
-        const newNote = {
-          id: Date.now(),
-          title: project.newNoteTitle,
-          content: '',
-          created: new Date().toISOString(),
-          lastModified: new Date().toISOString()
+        try {
+          const task = await projectsApi.addProjectTask(projectId, {
+            text: project.newTask
+          })
+          project.tasks.push(task)
+          project.newTask = ''
+        } catch (error) {
+          console.error('Error creating task:', error)
         }
-        project.notes.push(newNote)
-        project.newNoteTitle = ''
-        project.activeNoteId = newNote.id
       }
     },
-    deleteTask(project, taskId) {
-      project.tasks = project.tasks.filter(task => task.id !== taskId)
-    },
-    deleteNote(project, noteId) {
-      project.notes = project.notes.filter(note => note.id !== noteId)
-      if (project.activeNoteId === noteId) {
-        project.activeNoteId = project.notes.length > 0 ? project.notes[0].id : null
+
+    async addNoteToProject(projectId) {
+      const project = this.projects.find(p => p._id === projectId)
+      if (project && project.newNoteTitle.trim()) {
+        try {
+          const note = await projectsApi.addProjectNote(projectId, {
+            title: project.newNoteTitle
+          })
+          project.notes.push(note)
+          project.newNoteTitle = ''
+          project.activeNoteId = note._id
+        } catch (error) {
+          console.error('Error creating note:', error)
+        }
       }
     },
+
+    async deleteTask(project, taskId) {
+      try {
+        await projectsApi.deleteProjectTask(project._id, taskId)
+        project.tasks = project.tasks.filter(task => task._id !== taskId)
+      } catch (error) {
+        console.error('Error deleting task:', error)
+      }
+    },
+
+    async deleteNote(project, noteId) {
+      try {
+        await projectsApi.deleteProjectNote(project._id, noteId)
+        project.notes = project.notes.filter(note => note._id !== noteId)
+        if (project.activeNoteId === noteId) {
+          project.activeNoteId = project.notes.length > 0 ? project.notes[0]._id : null
+        }
+      } catch (error) {
+        console.error('Error deleting note:', error)
+      }
+    },
+
     setActiveNote(project, noteId) {
       project.activeNoteId = noteId
     },
+
     getActiveNote(project) {
-      return project.notes.find(note => note.id === project.activeNoteId)
+      return project.notes.find(note => note._id === project.activeNoteId)
     },
-    updateNote(project) {
+
+    async updateNote(project) {
       const note = this.getActiveNote(project)
       if (note) {
-        note.lastModified = new Date().toISOString()
+        try {
+          const updatedNote = await projectsApi.updateProjectNote(project._id, note._id, {
+            content: note.content
+          })
+          const index = project.notes.findIndex(n => n._id === updatedNote._id)
+          if (index !== -1) {
+            project.notes[index] = updatedNote
+          }
+        } catch (error) {
+          console.error('Error updating note:', error)
+        }
       }
     },
+
+    async updateTask(project, task) {
+      try {
+        const updatedTask = await projectsApi.updateProjectTask(project._id, task._id, task)
+        const index = project.tasks.findIndex(t => t._id === updatedTask._id)
+        if (index !== -1) {
+          project.tasks[index] = updatedTask
+        }
+      } catch (error) {
+        console.error('Error updating task:', error)
+      }
+    },
+
     sortedTasks(tasks) {
       return [...tasks].sort((a, b) => {
         if (a.completed !== b.completed) {
@@ -260,14 +311,17 @@ export default {
         return 0
       })
     },
+
     sortedNotes(notes) {
       return [...notes].sort((a, b) => {
         return new Date(b.lastModified) - new Date(a.lastModified)
       })
     },
+
     completedTaskCount(project) {
       return project.tasks.filter(task => task.completed).length
     },
+
     formatDate(date) {
       return new Date(date).toLocaleDateString('en-US', {
         month: 'short',
@@ -275,7 +329,32 @@ export default {
         hour: '2-digit',
         minute: '2-digit'
       })
-    },
+    }
+  },
+  created() {
+    // Fetch projects when component is created
+    projectsApi.getProjects()
+      .then(projects => {
+        // Add UI state properties to each project
+        this.projects = projects.map(project => ({
+          ...project,
+          newTask: '',
+          newNoteTitle: '',
+          isExpanded: true,
+          activeTab: 'tasks',
+          activeNoteId: project.notes.length > 0 ? project.notes[0]._id : null
+        }))
+      })
+      .catch(error => console.error('Error fetching projects:', error))
+
+    // Create debounced version of updateNote
+    this.updateNote = debounce(this.updateNote, 1000)
+  },
+  beforeUnmount() {
+    // Cancel any pending debounced calls
+    if (this.updateNote.cancel) {
+      this.updateNote.cancel()
+    }
   }
 }
 </script>
