@@ -28,17 +28,27 @@
           class="project-card"
           :class="{ 'expanded': project.isExpanded }"
         >
-          <div class="project-header" @click="toggleProject(project._id)">
-            <div class="project-header-content">
+          <div class="project-header">
+            <div class="project-header-content" @click="toggleProject(project._id)">
               <h3>{{ project.name }}</h3>
               <span class="project-summary">
                 {{ completedTaskCount(project) }}/{{ project.tasks.length }} tasks 
                 • {{ project.notes.length }} notes
               </span>
             </div>
-            <button class="expand-button">
-              {{ project.isExpanded ? '−' : '+' }}
-            </button>
+            <div class="project-header-actions">
+              <button 
+                class="expand-button"
+                @click="toggleProject(project._id)"
+              >
+                {{ project.isExpanded ? '−' : '+' }}
+              </button>
+              <button 
+                @click.stop="deleteProject(project._id)" 
+                class="delete-project-btn"
+                title="Delete project"
+              >×</button>
+            </div>
           </div>
 
           <div v-if="project.isExpanded" class="project-content">
@@ -106,7 +116,6 @@
             <div v-if="project.activeTab === 'notes'" class="tab-content">
               <div class="notes-section">
                 <div class="note-list">
-                  <!-- Note Creation -->
                   <div class="input-group">
                     <input 
                       v-model="project.newNoteTitle" 
@@ -124,7 +133,6 @@
                     <p>No notes in this project yet. Create your first note above!</p>
                   </div>
 
-                  <!-- Note List -->
                   <div v-else class="notes-list">
                     <div 
                       v-for="note in sortedNotes(project.notes)" 
@@ -144,7 +152,6 @@
                   </div>
                 </div>
 
-                <!-- Note Editor -->
                 <div class="note-editor">
                   <template v-if="getActiveNote(project)">
                     <div class="editor-header">
@@ -203,6 +210,17 @@ export default {
           this.newProject = ''
         } catch (error) {
           console.error('Error creating project:', error)
+        }
+      }
+    },
+
+    async deleteProject(projectId) {
+      if (confirm('Are you sure you want to delete this project? This will also delete all tasks and notes within the project.')) {
+        try {
+          await projectsApi.deleteProject(projectId)
+          this.projects = this.projects.filter(p => p._id !== projectId)
+        } catch (error) {
+          console.error('Error deleting project:', error)
         }
       }
     },
@@ -332,10 +350,8 @@ export default {
     }
   },
   created() {
-    // Fetch projects when component is created
     projectsApi.getProjects()
       .then(projects => {
-        // Add UI state properties to each project
         this.projects = projects.map(project => ({
           ...project,
           newTask: '',
@@ -347,11 +363,9 @@ export default {
       })
       .catch(error => console.error('Error fetching projects:', error))
 
-    // Create debounced version of updateNote
     this.updateNote = debounce(this.updateNote, 1000)
   },
   beforeUnmount() {
-    // Cancel any pending debounced calls
     if (this.updateNote.cancel) {
       this.updateNote.cancel()
     }
@@ -384,7 +398,9 @@ export default {
 }
 
 .project-card {
-  composes: card;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
 }
@@ -421,6 +437,12 @@ export default {
   display: block;
 }
 
+.project-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .expand-button {
   background: none;
   border: none;
@@ -434,6 +456,30 @@ export default {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.delete-project-btn {
+  background: none;
+  border: none;
+  color: #ff4444;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-header:hover .delete-project-btn {
+  opacity: 0.6;
+}
+
+.delete-project-btn:hover {
+  opacity: 1 !important;
 }
 
 /* Project Content */
@@ -460,6 +506,102 @@ export default {
   padding-right: 16px;
   overflow-y: auto;
   flex-shrink: 0;
+}
+
+/* Note Items */
+.note-item {
+  display: flex;
+  align-items: start;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.note-item:hover {
+  background: #f0f0f0;
+}
+
+.note-item.active {
+  background: #e3f2fd;
+}
+
+.note-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-item h4 {
+  margin: 0 0 4px 0;
+  font-size: 1.1em;
+  color: #2c3e50;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-date {
+  font-size: 0.8em;
+  color: #999;
+}
+
+/* Note Editor */
+.note-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 0;
+  height: 100%;
+}
+
+.note-textarea {
+  flex: 1;
+  width: 100%;
+  padding: 20px;
+  border: none;
+  resize: none;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #2c3e50;
+  background: white;
+  font-family: inherit;
+}
+
+.note-textarea:focus {
+  outline: none;
+}
+
+.editor-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+  background: white;
+}
+
+.editor-header h4 {
+  margin: 0 0 4px 0;
+  color: #2c3e50;
+}
+
+.last-modified {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.empty-editor-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 1.1em;
+  padding: 20px;
+  background: #f9f9f9;
+  text-align: center;
 }
 
 /* Task List */
@@ -498,6 +640,73 @@ export default {
   min-width: 0;
 }
 
+/* Task Text */
+.task-text {
+  margin-left: 12px;
+  font-size: 1.1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-text.completed {
+  text-decoration: line-through;
+  color: #999;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tab-button {
+  padding: 8px 16px;
+  border: none;
+  background: #eee;
+  color: #666;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: all 0.2s ease;
+}
+
+.tab-button.active {
+  background: #42b983;
+  color: white;
+}
+
+/* Delete Button */
+.delete-btn {
+  background: none;
+  border: none;
+  color: #ff4444;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.note-item:hover .delete-btn,
+.task-item:hover .delete-btn {
+  opacity: 0.6;
+}
+
+.delete-btn:hover {
+  opacity: 1 !important;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .notes-section {
@@ -515,6 +724,17 @@ export default {
   .project-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .note-editor {
+    margin-top: 16px;
+    height: 400px;
+  }
+
+  .project-header-actions {
+    position: absolute;
+    top: 16px;
+    right: 16px;
   }
 }
 </style>

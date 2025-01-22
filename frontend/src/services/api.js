@@ -114,5 +114,10 @@ export const projectsApi = {
   // Delete project note
   deleteProjectNote: (projectId, noteId) => apiCall(`/api/projects/${projectId}/notes/${noteId}`, {
     method: 'DELETE'
+  }),
+  
+  // Delete project
+  deleteProject: (projectId) => apiCall(`/api/projects/${projectId}`, {
+    method: 'DELETE'
   })
 };

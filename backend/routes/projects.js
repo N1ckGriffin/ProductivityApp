@@ -214,4 +214,26 @@ router.delete('/:projectId/notes/:noteId', auth, async (req, res) => {
   }
 });
 
+// Delete project
+router.delete('/:id', auth, async (req, res) => {
+    try {
+      const project = await Project.findOneAndDelete({
+        _id: req.params.id,
+        userId: req.user._id
+      });
+  
+      if (!project) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
+  
+      // Delete associated tasks and notes
+      await Task.deleteMany({ projectId: req.params.id });
+      await Note.deleteMany({ projectId: req.params.id });
+  
+      res.json(project);
+    } catch (error) {
+      res.status(500).json({ message: 'Error deleting project' });
+    }
+});
+
 module.exports = router;
