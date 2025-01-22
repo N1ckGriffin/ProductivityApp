@@ -83,29 +83,26 @@
 </template>
 
 <script>
-import { tasksApi } from '../services/api'
-import debounce from 'lodash.debounce'
+import { ref, computed } from 'vue'
+import taskStore from '../stores/TaskStore'
 
 export default {
   name: 'Tasks',
-  data() {
-    return {
-      newTask: {
-        text: '',
-        scheduledDate: new Date().toISOString().split('T')[0]
-      },
-      tasks: [],
-      pendingUpdates: new Set() // Track tasks being updated
-    }
-  },
-  computed: {
-    today() {
+  setup() {
+    // Local state for new task form
+    const newTask = ref({
+      text: '',
+      scheduledDate: new Date().toISOString().split('T')[0]
+    })
+
+    const today = computed(() => {
       return new Date().toISOString().split('T')[0]
-    },
-    groupedTasks() {
+    })
+
+    const groupedTasks = computed(() => {
       const groups = {}
       
-      const sortedTasks = [...this.tasks].sort((a, b) => {
+      const sortedTasks = [...taskStore.tasks.value].sort((a, b) => {
         const dateA = new Date(a.scheduledDate)
         const dateB = new Date(b.scheduledDate)
         return dateA - dateB
@@ -120,84 +117,58 @@ export default {
       })
 
       return groups
-    }
-  },
-  methods: {
-    async addTask() {
-      if (this.newTask.text.trim()) {
+    })
+
+    // Methods
+    const addTask = async () => {
+      if (newTask.value.text.trim()) {
         try {
-          const task = await tasksApi.createTask({
-            text: this.newTask.text,
-            scheduledDate: new Date(this.newTask.scheduledDate).toISOString(),
+          await taskStore.addTask({
+            text: newTask.value.text,
+            scheduledDate: new Date(newTask.value.scheduledDate).toISOString()
           })
-          this.tasks.push(task)
-          this.newTask.text = ''
-          // Reset date to today after adding task
-          this.newTask.scheduledDate = new Date().toISOString().split('T')[0]
+          
+          // Reset form
+          newTask.value.text = ''
+          newTask.value.scheduledDate = new Date().toISOString().split('T')[0]
         } catch (error) {
           console.error('Error creating task:', error)
         }
       }
-    },
+    }
 
-    async handleTaskUpdate(task) {
-      if (this.pendingUpdates.has(task._id)) return
-
-      this.pendingUpdates.add(task._id)
+    const handleTaskUpdate = async (task) => {
       try {
-        await this.debouncedUpdateTask(task)
-      } finally {
-        this.pendingUpdates.delete(task._id)
-      }
-    },
-
-    async updateTask(task) {
-      try {
-        const updatedTask = await tasksApi.updateTask(task._id, {
+        await taskStore.updateTask(task._id, {
           completed: task.completed,
           scheduledDate: new Date(task.scheduledDate).toISOString()
         })
-        
-        const index = this.tasks.findIndex(t => t._id === updatedTask._id)
-        if (index !== -1) {
-          this.tasks.splice(index, 1, {
-            ...updatedTask,
-            scheduledDate: new Date(updatedTask.scheduledDate).toISOString()
-          })
-        }
       } catch (error) {
         console.error('Error updating task:', error)
-        const index = this.tasks.findIndex(t => t._id === task._id)
-        if (index !== -1) {
-          this.tasks[index].completed = !this.tasks[index].completed
-        }
+        task.completed = !task.completed // Revert on error
       }
-    },
+    }
 
-    handleDateChange(event, task) {
+    const handleDateChange = async (event, task) => {
       const newDate = event.target.value
-      task.scheduledDate = newDate
-      this.handleTaskUpdate(task)
-    },
-
-    formatDateForInput(date) {
-      return new Date(date).toISOString().split('T')[0]
-    },
-
-    async deleteTask(taskId) {
       try {
-        await tasksApi.deleteTask(taskId)
-        this.tasks = this.tasks.filter(task => task._id !== taskId)
+        await taskStore.updateTask(task._id, {
+          scheduledDate: new Date(newDate).toISOString()
+        })
       } catch (error) {
-        console.error('Error deleting task:', error)
+        console.error('Error updating task date:', error)
       }
-    },
+    }
 
-    formatGroupDate(date) {
-      const today = new Date().toISOString().split('T')[0]
+    const formatDateForInput = (date) => {
+      return new Date(date).toISOString().split('T')[0]
+    }
+
+    const formatGroupDate = (date) => {
+      const todayDate = new Date().toISOString().split('T')[0]
       const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
       
-      if (date === today) return 'Today'
+      if (date === todayDate) return 'Today'
       if (date === tomorrow) return 'Tomorrow'
       
       return new Date(date).toLocaleDateString('en-US', {
@@ -205,13 +176,13 @@ export default {
         month: 'long',
         day: 'numeric'
       })
-    },
+    }
 
-    completedTasksInGroup(tasks) {
+    const completedTasksInGroup = (tasks) => {
       return tasks.filter(task => task.completed).length
-    },
+    }
 
-    sortedTasks(tasks) {
+    const sortedTasks = (tasks) => {
       return [...tasks].sort((a, b) => {
         if (a.completed !== b.completed) {
           return a.completed ? 1 : -1
@@ -219,22 +190,29 @@ export default {
         return 0
       })
     }
-  },
-  created() {
-    tasksApi.getTasks()
-      .then(tasks => {
-        this.tasks = tasks.map(task => ({
-          ...task,
-          scheduledDate: new Date(task.scheduledDate).toISOString()
-        }))
-      })
-      .catch(error => console.error('Error fetching tasks:', error))
 
-    this.debouncedUpdateTask = debounce(this.updateTask, 1000)
-  },
-  beforeUnmount() {
-    if (this.debouncedUpdateTask?.cancel) {
-      this.debouncedUpdateTask.cancel()
+    const deleteTask = async (taskId) => {
+      try {
+        await taskStore.deleteTask(taskId)
+      } catch (error) {
+        console.error('Error deleting task:', error)
+      }
+    }
+
+    return {
+      newTask,
+      today,
+      tasks: computed(() => taskStore.tasks.value),
+      groupedTasks,
+      addTask,
+      handleTaskUpdate,
+      handleDateChange,
+      formatDateForInput,
+      formatGroupDate,
+      completedTasksInGroup,
+      sortedTasks,
+      deleteTask,
+      isLoading: computed(() => taskStore.isLoading)
     }
   }
 }
