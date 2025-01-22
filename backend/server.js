@@ -3,12 +3,17 @@ const mongoose = require('mongoose');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const cors = require('cors');
+const User = require('./models/User');
 require('dotenv').config();
+
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentialS: true
+}));
 app.use(express.json());
 
 // Connect to MongoDB
@@ -45,6 +50,7 @@ app.use(passport.initialize());
 
 // Routes
 app.use('/auth', require('./routes/auth'));
+app.use('/api/user', require('./routes/user'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
