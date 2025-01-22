@@ -10,16 +10,16 @@ router.get('/', auth, async (req, res) => {
     
     // If 'today' is specified, filter for today's tasks
     if (req.query.today === 'true') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+        
+        const tomorrow = new Date(today);
+        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
-      query.scheduledDate = {
-        $gte: today,
-        $lt: tomorrow
-      };
+        query.scheduledDate = {
+            $gte: today,
+            $lt: tomorrow
+        };
     }
 
     const tasks = await Task.find(query).sort({ completed: 1, scheduledDate: 1 });
