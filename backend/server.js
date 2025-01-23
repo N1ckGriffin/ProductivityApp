@@ -3,19 +3,28 @@ const mongoose = require('mongoose');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const cors = require('cors');
+const auth = require('./middleware/auth'); // Import the middleware
 const User = require('./models/User');
 require('dotenv').config({
   path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env'
 });
 
-
-
 const app = express();
+
+// Enforce HTTPS in production
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect(`https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+}
 
 // Middleware
 app.use(cors({
   origin: process.env.FRONTEND_URL,
-  credentialS: true
+  credentials: true
 }));
 app.use(express.json());
 
@@ -28,7 +37,7 @@ mongoose.connect(process.env.MONGODB_URI)
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "/auth/google/callback"
+    callbackURL: process.env.GOOGLE_CALLBACK_URL
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
@@ -51,12 +60,14 @@ passport.use(new GoogleStrategy({
 
 app.use(passport.initialize());
 
-// Routes
+// Public Routes (no auth needed)
 app.use('/auth', require('./routes/auth'));
-app.use('/api/user', require('./routes/user'));
-app.use('/api/notes', require('./routes/notes'));
-app.use('/api/tasks', require('./routes/tasks'));
-app.use('/api/projects', require('./routes/projects'));
+
+// Protected Routes (auth middleware applied)
+app.use('/api/user', auth, require('./routes/user'));
+app.use('/api/notes', auth, require('./routes/notes'));
+app.use('/api/tasks', auth, require('./routes/tasks'));
+app.use('/api/projects', auth, require('./routes/projects'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
